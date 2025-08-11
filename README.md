@@ -85,7 +85,7 @@ Built with **Python**, **Machine Learning**, **Streamlit**, and **LangChain** (M
 
 ## 📅 Development Timeline
 
-**May–Present** – Designed, built, and deployed the application with full EDA, ML pipeline, AI integration, and secure data handling.
+**May–July** – Designed, built, and deployed the application with full EDA, ML pipeline, AI integration, and secure data handling.
 
 ---
 
