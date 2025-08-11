@@ -4,6 +4,12 @@ An AI-powered Streamlit web application that predicts the risk of heart disease 
 
 ---
 
+## 🌐 Live App
+
+🔗 [Access the App]([https://your-deployed-app-link.com](https://end-to-end-heart-disease-prediction-2-a89x.onrender.com/))
+
+---
+
 ## 📌 Features
 
 ### 🔍 Heart Disease Prediction
@@ -37,11 +43,7 @@ An AI-powered Streamlit web application that predicts the risk of heart disease 
 |-------------------------|
 ![Screenshot-2025-06-02-074303](https://github.com/user-attachments/assets/3d2d62d0-7ee2-4004-85d0-748feac111f6)
 
----
 
-## 🌐 Live App
-
-🔗 [Access the App](https://your-deployed-app-link.com)
 
 ---
 
