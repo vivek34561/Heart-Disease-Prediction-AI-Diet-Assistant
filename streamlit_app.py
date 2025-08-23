@@ -1,38 +1,28 @@
-import os
-import io
-import unicodedata
 import streamlit as st
-from dotenv import load_dotenv
-from fpdf import FPDF
-from groq import Groq
-from src.mlproject.predict_pipelines import PredictPipeline
+import requests
 
-# Load environment variables
-load_dotenv()
+# ------------------------- Backend URL -------------------------
+API_URL = "http://127.0.0.1:8000"   # Change if deployed
 
 st.set_page_config(page_title="🪀 Heart Risk & Diet AI", layout="wide")
 
-# ------------------------- 🔑 API Key Input -------------------------
 st.sidebar.header("🔑 Configuration")
-groq_api_key = st.sidebar.text_input("Enter your Groq API Key", type="password")
-
-if not groq_api_key:
-    st.warning("⚠️ Please enter your Groq API key in the sidebar to continue.")
-    st.stop()
-
-client = Groq(api_key=groq_api_key)
+language = st.sidebar.selectbox("🌐 Select Output Language", ["English", "Hindi", "Spanish", "Tamil", "Bengali"])
 
 st.title("🪀 Heart Disease Predictor & Diet Assistant")
 
-# ------------------------- Session State Init -------------------------
-for key in ["predicted", "prediction", "diet_plan_text", "chat_history"]:
+# ------------------------- Session State -------------------------
+for key in ["predicted", "prediction", "diet_plan_text", "risk_report", "lifestyle", "doctor_note", "chat_history"]:
     if key not in st.session_state:
         st.session_state[key] = False if key == "predicted" else [] if key == "chat_history" else None
 
 # ------------------------- Tabs -------------------------
-tab1 = st.container()
+profile_tab, diet_tab, report_tab, lifestyle_tab, doctor_tab = st.tabs(
+    ["📋 Profile", "🥗 Diet Plan", "🗾 Risk Report", "🏃 Lifestyle", "📄 Doctor's Note"]
+)
 
-with tab1:
+# ------------------------- Profile Tab -------------------------
+with profile_tab:
     st.subheader("📋 Your Health Profile")
 
     with st.expander("🏠 Lifestyle & Demographics", expanded=True):
@@ -63,46 +53,21 @@ with tab1:
             ca = st.selectbox("🦠 Number of Major Vessels Colored", [0, 1, 2, 3])
             thal = st.selectbox("🦬 Thalassemia", ["Normal", "Fixed Defect", "Reversible Defect"])
 
-    model_input = {
-        "age": age,
-        "sex": 1 if sex == "Male" else 0,
-        "cp": ["Typical Angina", "Atypical Angina", "Non-anginal", "Asymptomatic"].index(cp),
-        "trestbps": trestbps,
-        "chol": chol,
-        "fbs": 1 if fbs == "Yes" else 0,
-        "restecg": ["Normal", "ST-T Abnormality", "Left Ventricular Hypertrophy"].index(restecg),
-        "thalach": thalach,
-        "exang": 1 if exang == "Yes" else 0,
-        "oldpeak": oldpeak,
-        "slope": ["Upsloping", "Flat", "Downsloping"].index(slope),
-        "ca": ca,
-        "thal": ["Normal", "Fixed Defect", "Reversible Defect"].index(thal),
+    # Prepare request payload
+    profile = {
+        "age": age, "sex": sex, "cp": cp, "trestbps": trestbps, "chol": chol,
+        "fbs": fbs, "restecg": restecg, "thalach": thalach, "exang": exang,
+        "oldpeak": oldpeak, "slope": slope, "ca": ca, "thal": thal
     }
 
-    predict_btn = st.button("🚑 Predict Risk")
-    diet_btn = st.button("🥗 Generate Diet Plan")
-    report_btn = st.button("🗾 Generate Risk Report")
-    lifestyle_btn = st.button("🏃 Lifestyle Suggestions")
-    doctor_note_btn = st.button("📄 Generate Doctor's Note")
-    language = st.selectbox("🌐 Select Output Language", ["English", "Hindi", "Spanish", "Tamil", "Bengali"])
-
-    def translate_text(text, target_language):
-        if target_language == "English":
-            return text
-        response = client.chat.completions.create(
-            model="llama3-70b-8192",
-            messages=[
-                {"role": "system", "content": "You are a helpful translator."},
-                {"role": "user", "content": f"Translate this to {target_language}:\n{text}"}
-            ]
-        )
-        return response.choices[0].message.content.strip()
-
-    if predict_btn:
-        pipeline = PredictPipeline()
-        prediction = pipeline.predict(model_input)
-        st.session_state["prediction"] = prediction
-        st.session_state["predicted"] = True
+    if st.button("🚑 Predict Risk"):
+        res = requests.post(f"{API_URL}/predict", json=profile)
+        if res.status_code == 200:
+            data = res.json()
+            st.session_state["prediction"] = data["prediction"]
+            st.session_state["predicted"] = True
+        else:
+            st.error("❌ Prediction failed.")
 
     if st.session_state["predicted"]:
         st.markdown("---")
@@ -111,98 +76,86 @@ with tab1:
         else:
             st.success("✅ **Low Risk of Heart Disease. Keep maintaining your health!**")
 
-    if diet_btn:
-        if not st.session_state["predicted"]:
-            st.warning("⚠️ Please run the prediction first.")
-        else:
-            prompt = f"""
-I’m a {age}-year-old {'male' if model_input['sex'] else 'female'} with:
-BP: {trestbps}, Cholesterol: {chol}, Fasting Sugar: {'Yes' if model_input['fbs'] else 'No'}
-Max HR: {thalach}, ST Depression: {oldpeak}, Thalassemia: {thal}
-Create a heart-healthy diet plan including nutrients, foods to eat/avoid, and sample meals.
-"""
-            with st.spinner("🍎 Generating diet plan..."):
-                response = client.chat.completions.create(
-                    model="llama3-70b-8192",
-                    messages=[
-                        {"role": "system", "content": "You are a certified medical dietitian."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    max_tokens=1000
-                )
-                st.session_state["diet_plan_text"] = response.choices[0].message.content
+# ------------------------- Diet Plan Tab -------------------------
+with diet_tab:
+    if st.session_state["predicted"]:
+        if st.button("🥗 Generate Diet Plan"):
+            res = requests.post(f"{API_URL}/diet-plan", json=profile)
+            if res.status_code == 200:
+                st.session_state["diet_plan_text"] = res.json()["diet_plan"]
+            else:
+                st.error("❌ Diet plan generation failed.")
 
-    if st.session_state["diet_plan_text"]:
-        formatted = st.session_state["diet_plan_text"].replace("\n", "<br>")
-        st.markdown(f"<div style='background:#068f88;padding:15px;border-radius:10px'>{formatted}</div>", unsafe_allow_html=True)
+        if st.session_state["diet_plan_text"]:
+            st.markdown("### 🥗 Diet Plan")
+            st.markdown(st.session_state["diet_plan_text"])
+            pdf_res = requests.post(f"{API_URL}/diet-plan/pdf", json=profile)
+            if pdf_res.status_code == 200:
+                st.download_button("📥 Download Diet Plan (PDF)", pdf_res.content, "diet_plan.pdf")
 
-        def clean_text(text):
-            return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    else:
+        st.info("⚠️ Please complete your profile and run prediction first.")
 
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_auto_page_break(auto=True, margin=15)
-        pdf.set_font("Arial", size=12)
-        for line in clean_text(st.session_state["diet_plan_text"]).split('\n'):
-            pdf.multi_cell(0, 10, line)
-        st.download_button("📥 Download Diet Plan", io.BytesIO(pdf.output(dest="S").encode("latin1")), "diet_plan.pdf")
+# ------------------------- Risk Report Tab -------------------------
+with report_tab:
+    if st.session_state["predicted"]:
+        if st.button("🗾 Generate Risk Report"):
+            res = requests.post(f"{API_URL}/risk-report", params={"prediction": st.session_state["prediction"], "language": language}, json=profile)
+            if res.status_code == 200:
+                st.session_state["risk_report"] = res.json()["risk_report"]
 
-    if report_btn and st.session_state["predicted"]:
-        with st.spinner("📊 Analyzing risk factors..."):
-            prompt = f"""
-You are a cardiologist. Explain why the patient was predicted {'high' if st.session_state['prediction'] else 'low'} risk.
-Age: {age}, Sex: {'Male' if model_input['sex'] else 'Female'}, Chol: {chol}, BP: {trestbps}, HR: {thalach}, ST Depression: {oldpeak}, Angina: {exang}, Thal: {thal}
-"""
-            response = client.chat.completions.create(
-                model="llama3-70b-8192",
-                messages=[{"role": "user", "content": prompt}]
-            )
+        if st.session_state.get("risk_report"):
             st.markdown("### 🗾 Risk Report")
-            st.markdown(translate_text(response.choices[0].message.content.strip(), language))
+            st.markdown(st.session_state["risk_report"])
+            pdf_res = requests.post(f"{API_URL}/risk-report/pdf", params={"prediction": st.session_state["prediction"]}, json=profile)
+            if pdf_res.status_code == 200:
+                st.download_button("📥 Download Risk Report (PDF)", pdf_res.content, "risk_report.pdf")
 
-    if lifestyle_btn and st.session_state["predicted"]:
-        with st.spinner("🏃 Generating recommendations..."):
-            prompt = f"""
-Give daily lifestyle advice on diet, exercise, stress, and sleep for a patient with:
-Age: {age}, Sex: {'Male' if model_input['sex'] else 'Female'}, BP: {trestbps}, Chol: {chol}, HR: {thalach}, ST Depression: {oldpeak}
-"""
-            response = client.chat.completions.create(
-                model="llama3-70b-8192",
-                messages=[{"role": "user", "content": prompt}]
-            )
+    else:
+        st.info("⚠️ Please complete your profile and run prediction first.")
+
+# ------------------------- Lifestyle Tab -------------------------
+with lifestyle_tab:
+    if st.session_state["predicted"]:
+        if st.button("🏃 Lifestyle Suggestions"):
+            res = requests.post(f"{API_URL}/lifestyle", params={"language": language}, json=profile)
+            if res.status_code == 200:
+                st.session_state["lifestyle"] = res.json()["lifestyle"]
+
+        if st.session_state.get("lifestyle"):
             st.markdown("### 🏃 Lifestyle Advice")
-            st.markdown(translate_text(response.choices[0].message.content.strip(), language))
+            st.markdown(st.session_state["lifestyle"])
 
-    if doctor_note_btn and st.session_state["predicted"]:
-        with st.spinner("📄 Drafting summary..."):
-            prompt = f"""
-Draft a doctor's summary note from patient profile and risk status:
-Age: {age}, Sex: {'Male' if model_input['sex'] else 'Female'}, Risk: {'High' if st.session_state['prediction'] else 'Low'},
-BP: {trestbps}, Chol: {chol}, HR: {thalach}, ST Depression: {oldpeak}, Angina: {exang}, Thalassemia: {thal}, Vessels: {ca}
-"""
-            response = client.chat.completions.create(
-                model="llama3-70b-8192",
-                messages=[{"role": "user", "content": prompt}]
-            )
+    else:
+        st.info("⚠️ Please complete your profile and run prediction first.")
+
+# ------------------------- Doctor's Note Tab -------------------------
+with doctor_tab:
+    if st.session_state["predicted"]:
+        if st.button("📄 Generate Doctor's Note"):
+            res = requests.post(f"{API_URL}/doctor-note", params={"prediction": st.session_state["prediction"], "language": language}, json=profile)
+            if res.status_code == 200:
+                st.session_state["doctor_note"] = res.json()["doctor_note"]
+
+        if st.session_state.get("doctor_note"):
             st.markdown("### 📄 Doctor's Note")
-            st.markdown(translate_text(response.choices[0].message.content.strip(), language))
+            st.markdown(st.session_state["doctor_note"])
+
+    else:
+        st.info("⚠️ Please complete your profile and run prediction first.")
 
 # ------------------------- Sidebar Chatbot -------------------------
 with st.sidebar:
     st.header("💬 Diet & Medical Chatbot")
-    user_input = st.text_input("❓ Ask anything")
+    user_input = st.chat_input("❓ Ask anything")
 
     if user_input:
-        with st.spinner("🧐 Thinking..."):
-            messages = [
-                {"role": "system", "content": "You are Healthy(B), a multilingual diet and heart health expert."},
-                {"role": "user", "content": user_input}
-            ]
-            response = client.chat.completions.create(model="llama3-70b-8192", messages=messages, max_tokens=300)
-            reply = response.choices[0].message.content
+        res = requests.post(f"{API_URL}/chat", json={"message": user_input, "language": language})
+        if res.status_code == 200:
+            reply = res.json()["reply"]
             st.session_state.chat_history.append({"role": "user", "content": user_input})
             st.session_state.chat_history.append({"role": "assistant", "content": reply})
-            st.markdown(translate_text(reply, language))
+            st.markdown(reply)
 
     if st.session_state.chat_history:
         st.markdown("---")
