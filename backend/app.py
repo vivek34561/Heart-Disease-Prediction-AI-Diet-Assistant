@@ -1,3 +1,5 @@
+# app/main.py
+
 import io
 import unicodedata
 import pickle
@@ -142,7 +144,6 @@ def chatbot(request: ChatRequest):
     return {"reply": translate_text(reply, request.language)}
 
 
+
 if __name__ == "__main__":
-    # local dev: run with `python main.py`
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))

@@ -1,45 +1,28 @@
-# Core Python libraries
 numpy
 pandas
 scikit-learn
 joblib
 seaborn
 -e .
-# ML libraries
 xgboost
 catboost
-
-# Environment management
 python-dotenv
-
-# API / Web
 fastapi
 uvicorn
 pydantic
 requests
-
-# Streamlit frontend
 streamlit
-
-# LangChain / LLM
 langchain
 langchain_community
 openai
 tiktoken
 faiss-cpu
 groq
-
-# Database connectors
 mysql-connector-python
 pymysql
-
-# PDF generation
 fpdf
 xhtml2pdf
 Pillow
-
-# MLflow
 mlflow
-
-# Testing
 pytest
+gunicorn
