@@ -1,8 +1,14 @@
+import os
 import streamlit as st
 import requests
 
-# ------------------------- Backend URL -------------------------
-API_URL = "https://heart4-d439a3d5247d.herokuapp.com/"   # Change if deployed
+# ------------------------- Backend URL (from env) -------------------------
+# Read API URL from environment so you can set it on Heroku as a config var.
+# Falls back to the existing deployed backend URL if not provided.
+API_URL = os.getenv("API_URL", "https://heart4-d439a3d5247d.herokuapp.com/")
+
+# Expose the API URL in the sidebar for quick verification when debugging deploys
+st.sidebar.markdown(f"**Backend API:** `{API_URL}`")
 
 st.set_page_config(page_title="🪀 Heart Risk & Diet AI", layout="wide")
 
