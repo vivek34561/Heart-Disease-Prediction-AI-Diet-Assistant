@@ -7,7 +7,11 @@ from dotenv import load_dotenv
 from sklearn.metrics import r2_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
-import pymysql
+# Avoid importing optional DB client at module import to prevent hard failures
+try:
+    import pymysql  # optional; only needed if reading from MySQL
+except Exception:
+    pymysql = None
 import pickle
 import numpy as np
 load_dotenv()
@@ -26,6 +30,8 @@ def read_sql_data():
     
     logging.info("Reading SQL database started")
     try:
+        if pymysql is None:
+            raise CustomException("pymysql not installed; install it or use CSV ingestion.")
         mydb = pymysql.connect(
             host = host,
             user = user,

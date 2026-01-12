@@ -9,6 +9,12 @@ from fpdf import FPDF
 from groq import Groq
 import os
 import uvicorn
+import sys
+
+# Ensure project root is on sys.path for importing src.* reliably
+PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 from src.mlproject.predict_pipelines import PredictPipeline
 
@@ -55,6 +61,12 @@ def translate_text(text: str, target_language: str) -> str:
     return response.choices[0].message.content.strip()
 
 # --------------------- Endpoints ---------------------
+
+@app.get("/debug-info")
+def debug_info():
+    import sys as _sys
+    import sklearn as _sk
+    return {"python": _sys.version, "sklearn": _sk.__version__}
 
 @app.post("/predict")
 def predict(profile: HealthProfile):
@@ -145,4 +157,4 @@ def chatbot(request: ChatRequest):
 if __name__ == "__main__":
     # local dev: run with `python main.py`
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+    uvicorn.run("app:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))

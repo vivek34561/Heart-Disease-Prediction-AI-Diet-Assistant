@@ -104,25 +104,33 @@ class ModelTrainer:
                     
             best_param = params[actual_model]
 
-            # MLflow tracking setup
-            mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
-            os.environ["MLFLOW_TRACKING_USERNAME"] = os.getenv("MLFLOW_TRACKING_USERNAME")
-            os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("MLFLOW_TRACKING_PASSWORD")
+            # MLflow tracking setup (fallback to local file store if remote auth isn't configured)
+            tracking_uri_env = os.getenv("MLFLOW_TRACKING_URI")
+            if tracking_uri_env:
+                mlflow.set_tracking_uri(tracking_uri_env)
+            else:
+                # default to local file store in project
+                mlflow.set_tracking_uri("file://" + os.path.abspath(os.path.join(os.getcwd(), "mlruns")))
+            os.environ["MLFLOW_TRACKING_USERNAME"] = os.getenv("MLFLOW_TRACKING_USERNAME", "")
+            os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("MLFLOW_TRACKING_PASSWORD", "")
             tracking_url_type_store = urlparse(mlflow.get_tracking_uri()).scheme
 
-            with mlflow.start_run():
-                predicted = best_model.predict(X_test)
+            try:
+                with mlflow.start_run():
+                    predicted = best_model.predict(X_test)
 
-                acc, prec, rec, f1 = self.eval_metrics(y_test, predicted)
+                    acc, prec, rec, f1 = self.eval_metrics(y_test, predicted)
 
-                mlflow.log_params(best_param)
-                mlflow.log_metric("accuracy", acc)
-                mlflow.log_metric("precision", prec)
-                mlflow.log_metric("recall", rec)
-                mlflow.log_metric("f1_score", f1)
+                    mlflow.log_params(best_param)
+                    mlflow.log_metric("accuracy", acc)
+                    mlflow.log_metric("precision", prec)
+                    mlflow.log_metric("recall", rec)
+                    mlflow.log_metric("f1_score", f1)
 
-                if tracking_url_type_store != "file":
-                    mlflow.sklearn.log_model(best_model, "model")
+                    if tracking_url_type_store != "file":
+                        mlflow.sklearn.log_model(best_model, "model")
+            except Exception as mlfe:
+                logging.warning(f"MLflow logging skipped due to: {mlfe}")
 
             if best_model_score < 0.6:
                 raise CustomException("No best model found")

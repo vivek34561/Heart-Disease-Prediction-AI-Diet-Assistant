@@ -59,7 +59,11 @@ class DataIngestion:
     def initiate_data_ingestion(self):
         try:
             # df = read_sql_data()
-            df = pd.read_csv(r'C:\Users\vivek gupta\Desktop\Heart_disease_prediction\notebook\data\cleaned_data.csv')
+            # Use repo-relative dataset to ensure portability across machines
+            from pathlib import Path
+            repo_root = Path(__file__).resolve().parents[3]
+            df_path = repo_root / 'notebook' / 'data' / 'cleaned_data.csv'
+            df = pd.read_csv(df_path)
             ###reading the data from mysql
             logging.info("reading completed mysql database")    
             

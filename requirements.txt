@@ -3,14 +3,15 @@ uvicorn
 gunicorn
 numpy
 pandas
-scikit-learn
+scikit-learn==1.7.2
 python-dotenv
 pydantic
 requests
 groq
 fpdf
 streamlit
-
-
-
-
+mlflow
+xgboost
+catboost
+-e .
+mlflow
