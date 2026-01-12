@@ -9,9 +9,4 @@ pydantic
 requests
 groq
 fpdf
-streamlit
-mlflow
-xgboost
-catboost
 -e .
-mlflow
