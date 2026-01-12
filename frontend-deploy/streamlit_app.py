@@ -1,8 +1,10 @@
 import streamlit as st
 import requests
+import os
 
 # ------------------------- Backend URL -------------------------
-API_URL = "https://heart4-d439a3d5247d.herokuapp.com/"   # Change if deployed
+# Use BACKEND_URL env var in deployment; fallback to localhost
+API_URL = os.environ.get("BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
 
 st.set_page_config(page_title="🪀 Heart Risk & Diet AI", layout="wide")
 
